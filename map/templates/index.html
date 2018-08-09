@@ -1,0 +1,174 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.3/css/materialize.min.css">
+  <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.3/js/materialize.min.js"></script>
+
+  {% load static from staticfiles %}
+  <script src='{% static "js/utils.js" %}'></script>
+
+  <style>
+    #mapid { height: 50vh; }
+  </style>
+
+</head>
+
+<body>
+
+  <div id="mapid"></div>
+
+  <table class="striped bordered">
+    <thead>
+      <tr>
+          <th data-field="address">Address</th>
+          <th data-field="latitude">Latitude</th>
+          <th data-field="longitude">Longitude</th>
+          <th data-field="creation">Creation</th>
+      </tr>
+    </thead>
+
+    <tbody id="tableAddresses"></tbody>
+  </table>
+
+
+  <div class="fixed-action-btn horizontal" style="bottom: 45px; right: 24px;">
+  <a class="btn-floating  red waves-effect waves-light btn-large">
+    <i class="large material-icons" onclick="resetAddresses()">restore_page</i>
+  </a>
+  <ul>
+    <li><a class="btn-floating blue waves-effect waves-light" onclick="onRefreshClick()"><i class="material-icons">lock</i></a></li>
+  </ul>
+</div>
+
+
+</body>
+
+<script>
+
+var mymap;
+var markers = [];
+
+var initMap = function() {
+
+  var myLatlng = {lat: -25.363, lng: 131.044};
+  mymap = new google.maps.Map(document.getElementById('mapid'), {
+    center: myLatlng,
+    zoom: 4
+  });
+
+  // Fetch all already saved coordinates
+  getAllCoordinates()
+
+  // Click event listener
+  mymap.addListener('click', function(e) {
+    var coord = e.latLng;
+    // Coordinate obj
+    var obj = {
+      lat:coord.lat(),
+      lng:coord.lng()
+    }
+    // We're converting this data to be url ready
+    var objB64 = urlReadyB64(JSON.stringify(obj))
+
+    $.ajax({
+      url: "/map/sendCoordinate/click/" + objB64 + "/",
+    }).done(function() {
+      getAllCoordinates()
+    })
+  });
+
+}
+
+// Will help to get new Refresh Token from Google APIs
+var onRefreshClick = function(){
+     $.ajax({
+       url: "/map/initRefreshToken"
+     }).done(function() {
+
+     })
+}
+
+// Will reset addresses list, table and remove all markers from the map
+var resetAddresses = function(){
+
+    deleteMarkers()
+
+     $.ajax({
+       url: "/map/clearAddresses"
+     }).done(function() {
+       getAllCoordinates()
+     })
+}
+
+// Will redraw addresses table and get all saved coordinates from Fusion tables
+var getAllCoordinates = function(){
+     $.ajax({
+       url: "/map/getAllCoordinates"
+     }).done(function(data) {
+       var ret = "";
+       if(data.rows)
+       {
+          for(var i=0; i < data.rows.length; i++)
+          {
+              var address = data.rows[i][1];
+              var lat = data.rows[i][2];
+              var lng = data.rows[i][3];
+              var creation = data.rows[i][4];
+              var id = data.rows[i][0];
+              ret += "<tr><td>"+address+"</td><td>"+lat+"</td><td>"+lng+"</td><td>"+creation+"</td>"
+              var myLatLng = {lat: parseFloat(lat), lng: parseFloat(lng)};
+              addMarker(myLatLng);
+          }
+       }
+       // Redraw the table
+       $('#tableAddresses').html(ret);
+     })
+ }
+
+// Sets the map on all markers in the array.
+var setMapOnAll = function(map) {
+  for (var i = 0; i < markers.length; i++) {
+    markers[i].setMap(map);
+  }
+}
+
+// Adds a marker to the map and push to the array.
+function addMarker(location) {
+  var marker = new google.maps.Marker({
+    position: location,
+    map: mymap
+  });
+  markers.push(marker);
+}
+
+// Sets the map on all markers in the array.
+var setMapOnAll = function(map) {
+  for (var i = 0; i < markers.length; i++) {
+    markers[i].setMap(map);
+  }
+}
+
+// Removes the markers from the map, but keeps them in the array.
+var clearMarkers = function() {
+  setMapOnAll(null);
+}
+
+// Shows any markers currently in the array.
+var showMarkers = function() {
+  setMapOnAll(mymap);
+}
+
+// Deletes all markers in the array by removing references to them.
+var deleteMarkers = function() {
+  clearMarkers();
+  markers = [];
+}
+</script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDMIBRMcmd9kfIGPb9PF1EMg5GvidqTJyI&callback=initMap" async defer></script>
+
+</html>
