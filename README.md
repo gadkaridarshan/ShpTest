@@ -1,4 +1,4 @@
-# :house: Single Page Application Django 1.9 / Materialize CSS / Fusion Tables
+# :house: Single Page Application Django 2.0/ Fusion Tables
 
 
 ## Installation
